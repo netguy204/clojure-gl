@@ -1,13 +1,29 @@
 # clojure-gl
 
-FIXME: write description
+A quick example of using lwjgl and NativeGuide from clojure to create
+a spinning triangle.
+
+By using nativeguide we're able to support
+
+$ lein uberjar
+
+To create a single completely standalone jar that should load the
+appropriate native GL libraries for Mac (64 bit), Windows (32 or 64
+bit), and Linux (32 or 64 bit).
 
 ## Usage
 
-FIXME: write
+$ lein deps
+
+then:
+
+$ lein run
+or
+$ lein uberjar
+$ java -jar thejar.jar
 
 ## License
 
-Copyright (C) 2012 FIXME
+Copyright (C) 2012 Brian Taylor
 
 Distributed under the Eclipse Public License, the same as Clojure.

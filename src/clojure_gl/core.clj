@@ -12,16 +12,6 @@
 (def ^:dynamic *height* nil)
 (def ^:dynamic *aspect-ratio* nil)
 
-(defn start-exit-checker []
-  (dosync (ref-set exit-requested false))
-  (start-thread
-   (fn []
-     (print "starting check thread")
-     (while (not (Display/isCloseRequested))
-       (Thread/sleep 100))
-     (print "leaving check thread")
-     (dosync (ref-set exit-requested true)))))
-
 (defn draw-tri [p1 p2 p3]
   (GL11/glBegin GL11/GL_TRIANGLES)
   (GL11/glVertex2f (p1 0) (p1 1))
@@ -45,13 +35,15 @@
   (Display/sync 60)
   (+ game-state dtms))
 
+(defn should-exit []
+  (Display/isCloseRequested))
+
 (defn game-loop []
   (loop [last-time (System/currentTimeMillis)
          game-state (game-state-init)]
     (let [current-time (System/currentTimeMillis)
           next-game-state (#'game-cycle (- current-time last-time) game-state)]
-      (Thread/sleep 20)
-      (if-not @exit-requested
+      (if-not (should-exit)
         (recur current-time next-game-state)))))
 
 (defn init-gl []
@@ -63,8 +55,6 @@
 (defn run []
   (Display/setTitle "Hello World")
   (Display/create)
-
-  (start-exit-checker)
 
   (try
     (binding [*width* (Display/getWidth)
