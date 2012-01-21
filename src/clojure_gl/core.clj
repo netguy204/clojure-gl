@@ -25,17 +25,18 @@
   (GL11/glTranslatef (* 0.5 *aspect-ratio*) 0.5 0.0)
   (GL11/glScalef 0.25 0.25 0.25)
 
+  (bind-texture (*texture-cache* fire-texture))
   (doseq [particle (game-state :fires)]
     (GL11/glPushMatrix)
     (GL11/glTranslatef ((particle :center) 0) ((particle :center) 1) 0.0)
     (GL11/glScalef (particle :scale) (particle :scale) (particle :scale))
     (GL11/glRotatef (particle :rotation) 0.0 0.0 1.0)
-    (draw-unit-quad (*texture-cache* fire-texture))
+    (draw-unit-quad)
     (GL11/glPopMatrix))
   
   (GL11/glPopMatrix)
   (Display/update)
-  (Display/sync 60)
+  (Display/sync 30)
 
   (conj game-state
         {:time (+ (game-state :time) dtms)

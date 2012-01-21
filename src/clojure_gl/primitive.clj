@@ -2,8 +2,7 @@
   (:use (clojure-gl texture))
   (:import (org.lwjgl.opengl GL11)))
 
-(defn draw-unit-quad [texture-id]
-  (bind-texture texture-id)
+(defn draw-unit-quad []
   (GL11/glBegin GL11/GL_QUADS)
   (GL11/glTexCoord2f 0 0)
   (GL11/glVertex2f -0.5 -0.5)
