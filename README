@@ -3,7 +3,7 @@
 A quick example of using lwjgl and NativeGuide from clojure to create
 a spinning triangle.
 
-By using nativeguide we're able to support
+By using nativeguide we're able to support:
 
 $ lein uberjar
 
