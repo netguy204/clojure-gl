@@ -109,3 +109,6 @@
       (let [[_ cache] (get-texture (first names) cache)]
         (recur cache (rest names)))
       cache)))
+
+(defn bind-texture [tex-id]
+  (GL11/glBindTexture GL11/GL_TEXTURE_2D tex-id))
