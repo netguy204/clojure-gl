@@ -1,7 +1,7 @@
 (ns clojure-gl.core
   (:use (clojure-gl prepare texture primitive particle))
   (:import (org.lwjgl LWJGLException)
-           (org.lwjgl.opengl Display GL11)))
+           (org.lwjgl.opengl Display GL11 GL14)))
 
 (defn start-thread [runnable]
   (.start (Thread. runnable)))
@@ -10,9 +10,12 @@
 (def ^:dynamic *height* nil)
 (def ^:dynamic *aspect-ratio* nil)
 (def ^:dynamic *texture-cache* nil)
+
 (def guy-texture "clojure-gl/guy.png")
 (def fire-texture "clojure-gl/fire.png")
-(def num-particles 50)
+(def star-texture "clojure-gl/star.png")
+
+(def num-particles 150)
 
 (defn game-state-init []
   {:time 0
@@ -24,9 +27,10 @@
   (GL11/glPushMatrix)
   (GL11/glTranslatef (* 0.5 *aspect-ratio*) 0.5 0.0)
   (GL11/glScalef 0.25 0.25 0.25)
-
+  
   (bind-texture (*texture-cache* fire-texture))
   (doseq [particle (game-state :fires)]
+    (GL11/glColor4f 1.0 1.0 1.0 (exp-alpha particle))
     (GL11/glPushMatrix)
     (GL11/glTranslatef ((particle :center) 0) ((particle :center) 1) 0.0)
     (GL11/glScalef (particle :scale) (particle :scale) (particle :scale))
@@ -74,7 +78,7 @@
     (binding [*width* (Display/getWidth)
               *height* (Display/getHeight)
               *aspect-ratio* (/ (Display/getWidth) (Display/getHeight))
-              *texture-cache* (preload-textures nil guy-texture fire-texture)]
+              *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)]
       (init-gl)
       (game-loop))
 

@@ -14,12 +14,22 @@
    :rotation (random-angle)
    :scale (random-between 0.1 0.2)
    :spin-rate (random-between -18 18)
-   :scale-rate (random-between 0.1 0.3)
+   :scale-rate (random-between 0.1 1.0)
    :time 0
-   :max-time (random-between 0.25 2.25)})
+   :max-time (random-between 0.25 5.25)})
+
+(defn normalized-time [particle]
+  (/ (particle :time) (particle :max-time)))
+
+(defn exp-to-one [v]
+  (Math/exp (- v 1)))
+
+(defn exp-alpha [particle]
+  (let [offset (normalized-time particle)]
+    (- 1 (exp-to-one offset))))
 
 (defn updated-value [obj property delta-property dt]
-  (+ (obj property) (* (obj delta-property dt))))
+  (+ (obj property) (* (obj delta-property) dt)))
 
 (defn update-particle [particle dt]
   (let [new-time (+ (particle :time) dt)]
