@@ -16,7 +16,7 @@
    :spin-rate (random-between -18 18)
    :scale-rate (random-between 0.1 1.0)
    :time 0
-   :max-time (random-between 0.25 5.25)})
+   :max-time (random-between 0.25 8.25)})
 
 (defn normalized-time [particle]
   (/ (particle :time) (particle :max-time)))

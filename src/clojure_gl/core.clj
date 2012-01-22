@@ -1,5 +1,5 @@
 (ns clojure-gl.core
-  (:use (clojure-gl prepare texture primitive particle))
+  (:use (clojure-gl prepare texture primitive particle shaders))
   (:import (org.lwjgl LWJGLException)
            (org.lwjgl.opengl Display GL11 GL14)))
 
@@ -10,10 +10,19 @@
 (def ^:dynamic *height* nil)
 (def ^:dynamic *aspect-ratio* nil)
 (def ^:dynamic *texture-cache* nil)
+(def ^:dynamic *program-cache* nil)
 
 (def guy-texture "clojure-gl/guy.png")
 (def fire-texture "clojure-gl/fire.png")
 (def star-texture "clojure-gl/star.png")
+
+(def identity-program
+  {:name "identity-program"
+   :shaders {:vertex "clojure-gl/identity.vs"
+             :fragment "clojure-gl/identity.fs"}
+   :attributes [[*attribute-vertex* "vVertex"]
+                [*attribute-texture-coords* "vTexCoord0"]]})
+
 
 (def num-particles 150)
 
@@ -78,7 +87,8 @@
     (binding [*width* (Display/getWidth)
               *height* (Display/getHeight)
               *aspect-ratio* (/ (Display/getWidth) (Display/getHeight))
-              *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)]
+              *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)
+              *program-cache* (preload-programs nil identity-program)]
       (init-gl)
       (game-loop))
 

@@ -1,4 +1,5 @@
 (ns clojure-gl.texture
+  (:use (clojure-gl buffers resources))
   (:import (java.awt Color Graphics)
            (java.awt.color ColorSpace)
            (java.awt.image ColorModel ComponentColorModel DataBuffer Raster BufferedImage)
@@ -8,26 +9,6 @@
            (java.nio ByteBuffer ByteOrder IntBuffer)
            (java.util Hashtable)))
 
-(defn create-int-buffer [sz]
-  (let [bb (ByteBuffer/allocateDirect (* 4 sz))]
-    (.order bb (ByteOrder/nativeOrder))
-    (.asIntBuffer bb)))
-
-(defn create-texture-id []
-  (let [ib (create-int-buffer 1)]
-    (GL11/glGenTextures ib)
-    (.get ib 0)))
-
-(defn resource-as-stream [ref]
-  (let [thr (Thread/currentThread)
-        loader (.getContextClassLoader thr)]
-    (.getResourceAsStream loader ref)))
-
-(defn greater-power-of-two [n]
-  (loop [x 2]
-    (if (< x n)
-      (recur (* x 2))
-      x)))
 
 (defn has-alpha [img]
   (.. img (getColorModel) (hasAlpha)))
