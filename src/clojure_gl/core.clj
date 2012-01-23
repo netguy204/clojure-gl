@@ -54,7 +54,8 @@
   (let [[program cache] (get-program identity-program *program-cache*)
         texture-binding (GL20/glGetUniformLocation program "textureUnit0")]
     (GL20/glUseProgram program)
-    (GL20/glUniform1i texture-binding (*texture-cache* guy-texture))
+    (bind-texture (*texture-cache* guy-texture))
+    (GL20/glUniform1i texture-binding 0)
     (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
     (gl-bind-buffer (*unit-quad* :texcoords) 2 *attribute-texture-coords*)
     (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))
