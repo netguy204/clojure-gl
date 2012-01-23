@@ -1,9 +1,10 @@
 (ns clojure-gl.core
   (:use (clojure-gl prepare texture primitive
                     particle buffers shaders
-                    geometry))
+                    geometry math))
   (:import (org.lwjgl LWJGLException)
-           (org.lwjgl.opengl Display GL11 GL14 GL20)))
+           (org.lwjgl.opengl Display GL11 GL14 GL20)
+           (org.lwjgl.util.vector Matrix4f)))
 
 (defn start-thread [runnable]
   (.start (Thread. runnable)))
@@ -51,14 +52,23 @@
 ;    (GL11/glPopMatrix))
 
 
+  (bind-texture (*texture-cache* star-texture))
   (let [[program cache] (get-program identity-program *program-cache*)
-        texture-binding (GL20/glGetUniformLocation program "textureUnit0")]
+        texture-binding (GL20/glGetUniformLocation program "textureUnit0")
+        transform-binding (GL20/glGetUniformLocation program "mvMatrix")
+        world-transform (mul (scale 0.25 0.25 0.25) (translation 1.5 0.0 0.0))]
     (GL20/glUseProgram program)
-    (bind-texture (*texture-cache* guy-texture))
     (GL20/glUniform1i texture-binding 0)
     (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
     (gl-bind-buffer (*unit-quad* :texcoords) 2 *attribute-texture-coords*)
-    (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))
+
+    (doseq [particle (game-state :fires)]
+      (let [rot (rotation (deg-to-rad (particle :rotation)) 0.0 0.0 1.0)
+            sf (particle :scale)
+            sc (scale sf sf sf)
+            tf (mul rot sc world-transform)]
+        (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf))
+        (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))))
   
 ;  (GL11/glPopMatrix)
   (Display/update)
