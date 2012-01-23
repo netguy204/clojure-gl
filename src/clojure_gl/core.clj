@@ -1,7 +1,9 @@
 (ns clojure-gl.core
-  (:use (clojure-gl prepare texture primitive particle shaders))
+  (:use (clojure-gl prepare texture primitive
+                    particle buffers shaders
+                    geometry))
   (:import (org.lwjgl LWJGLException)
-           (org.lwjgl.opengl Display GL11 GL14)))
+           (org.lwjgl.opengl Display GL11 GL14 GL20)))
 
 (defn start-thread [runnable]
   (.start (Thread. runnable)))
@@ -11,6 +13,7 @@
 (def ^:dynamic *aspect-ratio* nil)
 (def ^:dynamic *texture-cache* nil)
 (def ^:dynamic *program-cache* nil)
+(def ^:dynamic *unit-quad* nil)
 
 (def guy-texture "clojure-gl/guy.png")
 (def fire-texture "clojure-gl/fire.png")
@@ -32,22 +35,31 @@
 
 (defn game-cycle [dtms game-state]
   (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-  (GL11/glColor3f 1.0 1.0 1.0)
-  (GL11/glPushMatrix)
-  (GL11/glTranslatef (* 0.5 *aspect-ratio*) 0.5 0.0)
-  (GL11/glScalef 0.25 0.25 0.25)
+;  (GL11/glColor3f 1.0 1.0 1.0)
+;  (GL11/glPushMatrix)
+;  (GL11/glTranslatef (* 0.5 *aspect-ratio*) 0.5 0.0)
+;  (GL11/glScalef 0.25 0.25 0.25)
   
-  (bind-texture (*texture-cache* fire-texture))
-  (doseq [particle (game-state :fires)]
-    (GL11/glColor4f 1.0 1.0 1.0 (exp-alpha particle))
-    (GL11/glPushMatrix)
-    (GL11/glTranslatef ((particle :center) 0) ((particle :center) 1) 0.0)
-    (GL11/glScalef (particle :scale) (particle :scale) (particle :scale))
-    (GL11/glRotatef (particle :rotation) 0.0 0.0 1.0)
-    (draw-unit-quad)
-    (GL11/glPopMatrix))
+;  (bind-texture (*texture-cache* fire-texture))
+;  (doseq [particle (game-state :fires)]
+;    (GL11/glColor4f 1.0 1.0 1.0 (exp-alpha particle))
+;    (GL11/glPushMatrix)
+;    (GL11/glTranslatef ((particle :center) 0) ((particle :center) 1) 0.0)
+;    (GL11/glScalef (particle :scale) (particle :scale) (particle :scale))
+;    (GL11/glRotatef (particle :rotation) 0.0 0.0 1.0)
+;    (draw-unit-quad)
+;    (GL11/glPopMatrix))
+
+
+  (let [[program cache] (get-program identity-program *program-cache*)
+        texture-binding (GL20/glGetUniformLocation program "textureUnit0")]
+    (GL20/glUseProgram program)
+    (GL20/glUniform1i texture-binding (*texture-cache* guy-texture))
+    (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
+    (gl-bind-buffer (*unit-quad* :texcoords) 2 *attribute-texture-coords*)
+    (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))
   
-  (GL11/glPopMatrix)
+;  (GL11/glPopMatrix)
   (Display/update)
   (Display/sync 30)
 
@@ -88,7 +100,8 @@
               *height* (Display/getHeight)
               *aspect-ratio* (/ (Display/getWidth) (Display/getHeight))
               *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)
-              *program-cache* (preload-programs nil identity-program)]
+              *program-cache* (preload-programs nil identity-program)
+              *unit-quad* (create-unit-quad)]
       (init-gl)
       (game-loop))
 

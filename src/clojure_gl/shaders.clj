@@ -4,6 +4,7 @@
 
 (def ^:dynamic *attribute-vertex* 0)
 (def ^:dynamic *attribute-texture-coords* 1)
+(def ^:dynamic *attribute-texture0* 2)
 
 (defn load-shader [res kind]
   (if-let [lines (resource-as-string res)]

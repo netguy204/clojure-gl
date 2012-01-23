@@ -34,7 +34,7 @@
 
 (defn gl-point-buffer [arity array-of-verts]
   (let [glb (gl-buffer)
-        fb (vertex-float-buffer arity array-of-verts)]
+        fb (point-float-buffer arity array-of-verts)]
     (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER glb)
     (GL15/glBufferData GL15/GL_ARRAY_BUFFER fb GL15/GL_DYNAMIC_DRAW)
     glb))
@@ -45,7 +45,8 @@
       (recur (* x 2))
       x)))
 
-(defn gl-bind-vertex [vo attr]
-  (GL20/glEnableVertexAttribArray attr)
-  (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER vo)
-  (GL20/glVertexAttribPointer attr 3 GL11/GL_FLOAT GL11/GL_FALSE 0 0))
+(defn gl-bind-buffer [buffer arity attribute]
+  (GL20/glEnableVertexAttribArray attribute)
+  (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER buffer)
+  (GL20/glVertexAttribPointer attribute arity GL11/GL_FLOAT false 0 0))
+
