@@ -13,7 +13,7 @@
   {:center pt
    :rotation (random-angle)
    :scale (random-between 0.1 0.2)
-   :spin-rate (random-between -18 18)
+   :spin-rate (random-between -18.0 18.0)
    :scale-rate (random-between 0.1 1.0)
    :time 0
    :max-time (random-between 0.25 8.25)})

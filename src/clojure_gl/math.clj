@@ -22,8 +22,8 @@
 (defn mul [& many]
   (reduce mul2 (Matrix4f.) many))
 
-(defn matrix-to-buffer [mat]
-  (let [fb (create-float-buffer 16)]
+(defn matrix-to-buffer [^Matrix4f mat]
+  (let [^java.nio.FloatBuffer fb (create-float-buffer 16)]
     (.store mat fb)
     (.flip fb)
     fb))

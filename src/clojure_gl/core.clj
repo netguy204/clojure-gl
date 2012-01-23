@@ -27,36 +27,25 @@
    :attributes [[*attribute-vertex* "vVertex"]
                 [*attribute-texture-coords* "vTexCoord0"]]})
 
-
 (def num-particles 150)
 
 (defn game-state-init []
   {:time 0
-   :fires (for [x (range num-particles)] (fire-particle [0 0]))})
+   :fires (for [x (range num-particles)] (fire-particle [0.0 0.0]))})
 
 (defn game-cycle [dtms game-state]
   (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-;  (GL11/glColor3f 1.0 1.0 1.0)
-;  (GL11/glPushMatrix)
-;  (GL11/glTranslatef (* 0.5 *aspect-ratio*) 0.5 0.0)
-;  (GL11/glScalef 0.25 0.25 0.25)
-  
-;  (bind-texture (*texture-cache* fire-texture))
-;  (doseq [particle (game-state :fires)]
-;    (GL11/glColor4f 1.0 1.0 1.0 (exp-alpha particle))
-;    (GL11/glPushMatrix)
-;    (GL11/glTranslatef ((particle :center) 0) ((particle :center) 1) 0.0)
-;    (GL11/glScalef (particle :scale) (particle :scale) (particle :scale))
-;    (GL11/glRotatef (particle :rotation) 0.0 0.0 1.0)
-;    (draw-unit-quad)
-;    (GL11/glPopMatrix))
-
-
   (bind-texture (*texture-cache* star-texture))
-  (let [[program cache] (get-program identity-program *program-cache*)
+  (let [[^Integer program cache] (get-program identity-program *program-cache*)
         texture-binding (GL20/glGetUniformLocation program "textureUnit0")
         transform-binding (GL20/glGetUniformLocation program "mvMatrix")
-        world-transform (mul (scale 0.25 0.25 0.25) (translation 1.5 0.0 0.0))]
+        alpha-binding (GL20/glGetUniformLocation program "alpha")
+        time (/ (game-state :time) 1000)
+        rotation-factor (* time 0.5)
+        scale-factor (Math/sin (* time 0.25))
+        world-transform (mul (scale scale-factor scale-factor scale-factor)
+                             (translation (Math/cos rotation-factor)
+                                          (Math/sin rotation-factor) 0.0))]
     (GL20/glUseProgram program)
     (GL20/glUniform1i texture-binding 0)
     (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
@@ -66,20 +55,20 @@
       (let [rot (rotation (deg-to-rad (particle :rotation)) 0.0 0.0 1.0)
             sf (particle :scale)
             sc (scale sf sf sf)
-            tf (mul rot sc world-transform)]
+            tf (mul world-transform rot sc (translation 1.0 0.0 0.0))]
         (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf))
+        (GL20/glUniform1f alpha-binding (exp-alpha particle))
         (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))))
   
-;  (GL11/glPopMatrix)
   (Display/update)
   (Display/sync 30)
 
   (conj game-state
         {:time (+ (game-state :time) dtms)
          :fires (for [particle (game-state :fires)]
-                  (if-let [particle (update-particle particle (/ dtms 1000))]
+                  (if-let [particle (update-particle particle (/ dtms 1000.0))]
                     particle
-                    (fire-particle [0 0])))}))
+                    (fire-particle [0.0 0.0])))}))
 
 (defn should-exit []
   (Display/isCloseRequested))
