@@ -3,7 +3,7 @@
                     particle buffers shaders
                     geometry math))
   (:import (org.lwjgl LWJGLException)
-           (org.lwjgl.opengl Display GL11 GL14 GL20)
+           (org.lwjgl.opengl Display GL11 GL12 GL14 GL15 GL20 GL21)
            (org.lwjgl.util.vector Matrix4f)))
 
 (defn start-thread [runnable]
@@ -15,6 +15,8 @@
 (def ^:dynamic *texture-cache* nil)
 (def ^:dynamic *program-cache* nil)
 (def ^:dynamic *unit-quad* nil)
+(def ^:dynamic *screen-pbo* nil)
+(def ^:dynamic *screen-texture* nil)
 
 (def guy-texture "clojure-gl/guy.png")
 (def fire-texture "clojure-gl/fire.png")
@@ -33,16 +35,15 @@
   {:time 0
    :fires (for [x (range num-particles)] (fire-particle [0.0 0.0]))})
 
-(defn game-cycle [dtms game-state]
+(defn render-particles [game-state fixed-alpha]
   (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-  (bind-texture (*texture-cache* star-texture))
   (let [[^Integer program cache] (get-program identity-program *program-cache*)
         texture-binding (GL20/glGetUniformLocation program "textureUnit0")
         transform-binding (GL20/glGetUniformLocation program "mvMatrix")
         alpha-binding (GL20/glGetUniformLocation program "alpha")
         time (/ (game-state :time) 1000)
         rotation-factor (* time 0.5)
-        scale-factor (Math/sin (* time 0.25))
+        scale-factor (+ 0.75 (* 0.25 (Math/sin (* time 0.25))))
         world-transform (mul (scale scale-factor scale-factor scale-factor)
                              (translation (Math/cos rotation-factor)
                                           (Math/sin rotation-factor) 0.0))]
@@ -57,8 +58,30 @@
             sc (scale sf sf sf)
             tf (mul world-transform rot sc (translation 1.0 0.0 0.0))]
         (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf))
-        (GL20/glUniform1f alpha-binding (exp-alpha particle))
-        (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))))
+        (GL20/glUniform1f alpha-binding (if fixed-alpha fixed-alpha (exp-alpha particle)))
+        (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4)))))
+
+(defn game-cycle [dtms game-state]
+
+  (bind-texture (*texture-cache* star-texture))
+  (render-particles game-state false)
+
+  ;; render into a PBO
+  (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
+  (GL11/glReadPixels 0 0 *width* *height* GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE 0)
+  (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER 0)
+
+  ;; put the render result into a texture
+  (GL15/glBindBuffer GL21/GL_PIXEL_UNPACK_BUFFER *screen-pbo*)
+  (bind-texture *screen-texture*)
+  (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
+  (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
+  (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA *width* *height* 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE 0)
+  (GL15/glBindBuffer GL21/GL_PIXEL_UNPACK_BUFFER 0)
+
+  ;; and draw the particles again using that render result
+  (render-particles game-state 0.6)
+
   
   (Display/update)
   (Display/sync 30)
@@ -91,8 +114,15 @@
   (GL11/glBlendFunc GL11/GL_SRC_ALPHA GL11/GL_ONE_MINUS_SRC_ALPHA)
   (GL11/glEnable GL11/GL_BLEND))
 
+(defn find-mode [width height]
+  (first (filter (fn [m]
+                   (and (== (.getWidth m) width)
+                        (== (.getHeight m) height)))
+                 (Display/getAvailableDisplayModes))))
+
 (defn run []
   (Display/setTitle "Hello World")
+  (Display/setDisplayMode (find-mode 800 600))
   (Display/create)
 
   (try
@@ -101,7 +131,14 @@
               *aspect-ratio* (/ (Display/getWidth) (Display/getHeight))
               *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)
               *program-cache* (preload-programs nil identity-program)
-              *unit-quad* (create-unit-quad)]
+              *unit-quad* (create-unit-quad)
+              *screen-pbo* (gl-buffer)
+              *screen-texture* (create-texture-id)]
+      ;; allocate space for the screen pbo
+      (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
+      (GL15/glBufferData GL21/GL_PIXEL_PACK_BUFFER (* *width* *height* 4) GL15/GL_DYNAMIC_COPY)
+      (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER 0)
+      
       (init-gl)
       (game-loop))
 
