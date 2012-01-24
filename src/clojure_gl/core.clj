@@ -41,6 +41,7 @@
         texture-binding (GL20/glGetUniformLocation program "textureUnit0")
         transform-binding (GL20/glGetUniformLocation program "mvMatrix")
         alpha-binding (GL20/glGetUniformLocation program "alpha")
+        matrix-buffer (create-float-buffer 16)
         time (/ (game-state :time) 1000)
         rotation-factor (* time 0.5)
         scale-factor (+ 0.75 (* 0.25 (Math/sin (* time 0.25))))
@@ -57,13 +58,13 @@
             sf (particle :scale)
             sc (scale sf sf sf)
             tf (mul world-transform rot sc (translation 1.0 0.0 0.0))]
-        (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf))
+        (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf matrix-buffer))
         (GL20/glUniform1f alpha-binding (if fixed-alpha fixed-alpha (exp-alpha particle)))
         (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4)))))
 
 (defn game-cycle [dtms game-state]
 
-  (bind-texture (*texture-cache* star-texture))
+  (bind-texture (*texture-cache* fire-texture))
   (render-particles game-state false)
 
   ;; render into a PBO
@@ -80,7 +81,7 @@
   (GL15/glBindBuffer GL21/GL_PIXEL_UNPACK_BUFFER 0)
 
   ;; and draw the particles again using that render result
-  (render-particles game-state 0.6)
+  (render-particles game-state 0.8)
 
   
   (Display/update)
