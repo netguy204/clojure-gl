@@ -10,7 +10,7 @@
            (java.util Hashtable)))
 
 
-(defn has-alpha [img]
+(defn has-alpha [^BufferedImage img]
   (.. img (getColorModel) (hasAlpha)))
 
 (defn alpha-color-model []
@@ -29,15 +29,16 @@
                         ComponentColorModel/OPAQUE
                         DataBuffer/TYPE_BYTE))
 
-(defn convert-texture-data [img]
+(defn convert-texture-data [^BufferedImage img]
   (let [width (greater-power-of-two (.getWidth img))
         height (greater-power-of-two (.getHeight img))
+        ^ComponentColorModel color-model (if (has-alpha img)
+                                           (alpha-color-model)
+                                           (color-model))
         raster (if (has-alpha img)
                  (Raster/createInterleavedRaster DataBuffer/TYPE_BYTE width height 4 nil)
                  (Raster/createInterleavedRaster DataBuffer/TYPE_BYTE width height 3 nil))
-        tex-image (if (has-alpha img)
-                    (BufferedImage. (alpha-color-model) raster false (Hashtable.))
-                    (BufferedImage. (color-model) raster false (Hashtable.)))
+        tex-image (BufferedImage. color-model raster false (Hashtable.))
         tex-g (.getGraphics tex-image)]
 
     (doto tex-g
@@ -58,7 +59,7 @@
     (ImageIO/read (BufferedInputStream. resource))))
 
 (defn load-texture [resource]
-  (if-let [image (load-image resource)]
+  (if-let [^BufferedImage image (load-image resource)]
     (let [texid (create-texture-id)
           width (greater-power-of-two (.getWidth image))
           height (greater-power-of-two (.getHeight image))

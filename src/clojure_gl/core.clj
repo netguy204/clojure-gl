@@ -69,7 +69,8 @@
 
   ;; render into a PBO
   (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
-  (GL11/glReadPixels 0 0 *width* *height* GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE 0)
+  (GL11/glReadPixels (int 0) (int 0) (int *width*) (int *height*)
+                     GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE (long 0))
   (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER 0)
 
   ;; put the render result into a texture
@@ -77,7 +78,8 @@
   (bind-texture *screen-texture*)
   (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_LINEAR)
   (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_LINEAR)
-  (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA *width* *height* 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE 0)
+  (GL11/glTexImage2D GL11/GL_TEXTURE_2D (int 0) GL11/GL_RGBA (int *width*) (int *height*)
+                     (int 0) GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE (long 0))
   (GL15/glBindBuffer GL21/GL_PIXEL_UNPACK_BUFFER 0)
 
   ;; and draw the particles again using that render result
