@@ -5,7 +5,7 @@
   (:import (org.lwjgl LWJGLException)
            (org.lwjgl.opengl Display GL11 GL12 GL14 GL15 GL20 GL21)
            (org.lwjgl.util.vector Matrix4f)
-           (org.lwjgl.input Mouse)))
+           (org.lwjgl.input Mouse Keyboard)))
 
 (defn start-thread [runnable]
   (.start (Thread. runnable)))
@@ -98,7 +98,9 @@
                     (fire-particle [0.0 0.0])))}))
 
 (defn should-exit []
-  (Display/isCloseRequested))
+  (or (Display/isCloseRequested)
+      (Mouse/next)
+      (Keyboard/next)))
 
 (defn game-loop []
   (loop [last-time (System/currentTimeMillis)
@@ -125,6 +127,7 @@
 
   (Mouse/create)
   (Mouse/setGrabbed true)
+  (Keyboard/create)
 
   (try
     (binding [*width* (Display/getWidth)
