@@ -117,15 +117,9 @@
   (GL11/glBlendFunc GL11/GL_SRC_ALPHA GL11/GL_ONE_MINUS_SRC_ALPHA)
   (GL11/glEnable GL11/GL_BLEND))
 
-(defn find-mode [width height]
-  (first (filter (fn [m]
-                   (and (== (.getWidth m) width)
-                        (== (.getHeight m) height)))
-                 (Display/getAvailableDisplayModes))))
-
 (defn run []
   (Display/setTitle "Hello World")
-  (Display/setDisplayMode (find-mode 800 600))
+  (Display/setFullscreen true)
   (Display/create)
 
   (try
