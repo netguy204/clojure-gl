@@ -4,7 +4,8 @@
                     geometry math))
   (:import (org.lwjgl LWJGLException)
            (org.lwjgl.opengl Display GL11 GL12 GL14 GL15 GL20 GL21)
-           (org.lwjgl.util.vector Matrix4f)))
+           (org.lwjgl.util.vector Matrix4f)
+           (org.lwjgl.input Mouse)))
 
 (defn start-thread [runnable]
   (.start (Thread. runnable)))
@@ -121,6 +122,9 @@
   (Display/setTitle "Hello World")
   (Display/setFullscreen true)
   (Display/create)
+
+  (Mouse/create)
+  (Mouse/setGrabbed true)
 
   (try
     (binding [*width* (Display/getWidth)
