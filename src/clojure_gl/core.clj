@@ -27,9 +27,12 @@
    :shaders {:vertex "clojure-gl/identity.vs"
              :fragment "clojure-gl/identity.fs"}
    :attributes [[*attribute-vertex* "vVertex"]
-                [*attribute-texture-coords* "vTexCoord0"]]})
+                [*attribute-texture-coords* "vTexCoord0"]]
+   :uniforms {:texture-unit "textureUnit0"
+              :mv-matrix "mvMatrix"
+              :alpha "alpha"}})
 
-(def num-particles 150)
+(def num-particles 350)
 
 (defn game-state-init []
   {:time 0
@@ -37,18 +40,18 @@
 
 (defn render-particles [game-state fixed-alpha]
   (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-  (let [[^Integer program cache] (get-program identity-program *program-cache*)
-        texture-binding (GL20/glGetUniformLocation program "textureUnit0")
-        transform-binding (GL20/glGetUniformLocation program "mvMatrix")
-        alpha-binding (GL20/glGetUniformLocation program "alpha")
+  (let [[program _] (get-program identity-program *program-cache*)
+        texture-binding (get-uniform-location program :texture-unit)
+        transform-binding (get-uniform-location program :mv-matrix)
+        alpha-binding (get-uniform-location program :alpha)
         matrix-buffer (create-float-buffer 16)
-        time (/ (game-state :time) 1000)
+        time (/ (game-state :time) 1000.0)
         rotation-factor (* time 0.5)
         scale-factor (+ 0.75 (* 0.25 (Math/sin (* time 0.25))))
         world-transform (mul (scale scale-factor scale-factor scale-factor)
                              (translation (Math/cos rotation-factor)
                                           (Math/sin rotation-factor) 0.0))]
-    (GL20/glUseProgram program)
+    (use-program program)
     (GL20/glUniform1i texture-binding 0)
     (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
     (gl-bind-buffer (*unit-quad* :texcoords) 2 *attribute-texture-coords*)

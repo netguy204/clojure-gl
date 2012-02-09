@@ -35,6 +35,21 @@
   (doseq [shader shaders]
     (GL20/glDeleteShader shader)))
 
+(defn- internal-get-uniform-location [program ^String name]
+  (let [^Integer program-number (:program-number program)]
+    (GL20/glGetUniformLocation program-number name)))
+
+(defn- as-map [seq]
+  (into {} seq))
+
+(defn- with-uniform-mapping [program]
+  (conj program {:uniform-mapping
+                 (as-map (for [[symbol name] (:uniforms program)]
+                           [symbol (internal-get-uniform-location program name)]))}))
+
+(defn get-uniform-location [program symbol]
+  ((:uniform-mapping program) symbol))
+
 (defn load-program [program-resource]
   (let [shader-names (program-resource :shaders)
         attributes (program-resource :attributes)
@@ -53,10 +68,16 @@
 (defn get-program [program-resource program-cache]
   (let [program-cache (or program-cache {})
         name (program-resource :name)]
-    (if-let [program (program-cache name)]
-      [program program-cache]
-      (let [program (load-program program-resource)]
-        [program (conj program-cache {name program})]))))
+    (if-let [program-record (program-cache name)]
+      [program-record program-cache]
+      (let [program-number (load-program program-resource)
+            program-record (with-uniform-mapping
+                             (conj program-resource {:program-number program-number}))]
+        [program-record (conj program-cache {name program-record})]))))
+
+(defn use-program [program]
+  (let [^Integer program-number (:program-number program)]
+   (GL20/glUseProgram program-number)))
 
 (defn preload-programs [cache & resources]
   (loop [cache cache
@@ -64,4 +85,9 @@
     (if (first resources)
       (let [[_ cache] (get-program (first resources) cache)]
         (recur cache (rest resources)))
-      cache))  )
+      cache)))
+
+(defn progify [program cache]
+  (let [program-number (get-program program cache)]
+    program-number))
+
