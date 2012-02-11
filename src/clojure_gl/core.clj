@@ -26,8 +26,8 @@
   {:name "identity-program"
    :shaders {:vertex "clojure-gl/identity.vs"
              :fragment "clojure-gl/identity.fs"}
-   :attributes [[*attribute-vertex* "vVertex"]
-                [*attribute-texture-coords* "vTexCoord0"]]
+   :attributes {:vertices "vVertex"
+                :texture-coords "vTexCoord0"}
    :uniforms {:texture-unit "textureUnit0"
               :mv-matrix "mvMatrix"
               :alpha "alpha"}})
@@ -53,8 +53,8 @@
                                           (Math/sin rotation-factor) 0.0))]
     (use-program program)
     (GL20/glUniform1i texture-binding 0)
-    (gl-bind-buffer (*unit-quad* :verts) 3 *attribute-vertex*)
-    (gl-bind-buffer (*unit-quad* :texcoords) 2 *attribute-texture-coords*)
+    (gl-bind-buffer (*unit-quad* :verts) 3 (get-attribute-location program :vertices))
+    (gl-bind-buffer (*unit-quad* :texcoords) 2 (get-attribute-location program :texture-coords))
 
     (doseq [particle (game-state :fires)]
       (let [rot (rotation (deg-to-rad (particle :rotation)) 0.0 0.0 1.0)

@@ -6,6 +6,9 @@
 (def ^:dynamic *attribute-texture-coords* 1)
 (def ^:dynamic *attribute-texture0* 2)
 
+(defn- as-map [seq]
+  (into {} seq))
+
 (defn load-shader [res kind]
   (if-let [lines (resource-as-string res)]
     (let [shader (GL20/glCreateShader kind)]
@@ -16,6 +19,17 @@
           (GL20/glDeleteShader shader)
           (throw (RuntimeException. error)))
         shader))))
+
+(defn- assign-attribute-numbers [attributes]
+  (zipmap (keys attributes)
+          (range (count attributes))))
+
+(defn- attribute-bindings [attributes]
+  (let [numbers (assign-attribute-numbers attributes)
+        number-to-name (as-map (for [key (keys attributes)]
+                                 [(numbers key) (attributes key)]))]
+    {:attribute-mapping numbers
+     :number-to-name number-to-name}))
 
 (defn link-program [shaders attributes]
   (let [program (GL20/glCreateProgram)]
@@ -39,20 +53,20 @@
   (let [^Integer program-number (:program-number program)]
     (GL20/glGetUniformLocation program-number name)))
 
-(defn- as-map [seq]
-  (into {} seq))
-
 (defn- with-uniform-mapping [program]
-  (conj program {:uniform-mapping
-                 (as-map (for [[symbol name] (:uniforms program)]
-                           [symbol (internal-get-uniform-location program name)]))}))
+  (conj program
+        {:uniform-mapping
+         (as-map (for [[symbol name] (:uniforms program)]
+                   [symbol (internal-get-uniform-location program name)]))}))
 
 (defn get-uniform-location [program symbol]
   ((:uniform-mapping program) symbol))
 
+(defn get-attribute-location [program symbol]
+  ((:attribute-mapping program) symbol))
+
 (defn load-program [program-resource]
   (let [shader-names (program-resource :shaders)
-        attributes (program-resource :attributes)
         shaders []
         shaders (if (shader-names :vertex)
                   (conj shaders (load-shader (shader-names :vertex) GL20/GL_VERTEX_SHADER))
@@ -61,7 +75,7 @@
                   (conj shaders (load-shader (shader-names :fragment) GL20/GL_FRAGMENT_SHADER))
                   shaders)]
     (try
-      (link-program shaders attributes)
+      (link-program shaders (:number-to-name program-resource))
       (finally
         (free-shaders shaders)))))
 
@@ -70,7 +84,9 @@
         name (program-resource :name)]
     (if-let [program-record (program-cache name)]
       [program-record program-cache]
-      (let [program-number (load-program program-resource)
+      (let [attributes (:attributes program-resource)
+            program-resource (conj program-resource (attribute-bindings attributes))
+            program-number (load-program program-resource)
             program-record (with-uniform-mapping
                              (conj program-resource {:program-number program-number}))]
         [program-record (conj program-cache {name program-record})]))))
