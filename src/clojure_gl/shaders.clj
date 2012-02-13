@@ -1,5 +1,5 @@
 (ns clojure-gl.shaders
-  (:use (clojure-gl resources))
+  (:use (clojure-gl resources buffers shader-variables))
   (:import (org.lwjgl.opengl GL11 GL20)))
 
 (def ^:dynamic *attribute-vertex* 0)
@@ -27,8 +27,11 @@
 (defn- attribute-bindings [attributes]
   (let [numbers (assign-attribute-numbers attributes)
         number-to-name (as-map (for [key (keys attributes)]
-                                 [(numbers key) (attributes key)]))]
-    {:attribute-mapping numbers
+                                 [(numbers key) (:name (attributes key))]))
+        arities (as-map (for [key (keys attributes)]
+                          [key (:arity (attributes key))]))]
+    {:attribute-number-mapping numbers
+     :attribute-arity-mapping arities
      :number-to-name number-to-name}))
 
 (defn link-program [shaders attributes]
@@ -63,7 +66,18 @@
   ((:uniform-mapping program) symbol))
 
 (defn get-attribute-location [program symbol]
-  ((:attribute-mapping program) symbol))
+  ((:attribute-number-mapping program) symbol))
+
+(defn get-attribute-arity [program symbol]
+  ((:attribute-arity-mapping program) symbol))
+
+(defn bind-program-attribute [program attribute buffer]
+  (gl-bind-buffer buffer
+                  (get-attribute-arity program attribute)
+                  (get-attribute-location program attribute)))
+
+(defn bind-program-uniform [program uniform value]
+  (uniform-bind value (get-uniform-location program uniform)))
 
 (defn load-program [program-resource]
   (let [shader-names (program-resource :shaders)

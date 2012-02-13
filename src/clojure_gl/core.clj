@@ -1,7 +1,8 @@
 (ns clojure-gl.core
   (:use (clojure-gl prepare texture primitive
                     particle buffers shaders
-                    geometry math))
+                    shader-variables geometry math
+                    marching-cubes))
   (:import (org.lwjgl LWJGLException)
            (org.lwjgl.opengl Display GL11 GL12 GL14 GL15 GL20 GL21)
            (org.lwjgl.util.vector Matrix4f)))
@@ -17,6 +18,7 @@
 (def ^:dynamic *unit-quad* nil)
 (def ^:dynamic *screen-pbo* nil)
 (def ^:dynamic *screen-texture* nil)
+(def ^:dynamic *test-float-texture* nil)
 
 (def guy-texture "clojure-gl/guy.png")
 (def fire-texture "clojure-gl/fire.png")
@@ -26,8 +28,10 @@
   {:name "identity-program"
    :shaders {:vertex "clojure-gl/identity.vs"
              :fragment "clojure-gl/identity.fs"}
-   :attributes {:vertices "vVertex"
-                :texture-coords "vTexCoord0"}
+   :attributes {:vertices {:name "vVertex"
+                           :arity 3}
+                :texture-coords {:name "vTexCoord0"
+                                 :arity 2}}
    :uniforms {:texture-unit "textureUnit0"
               :mv-matrix "mvMatrix"
               :alpha "alpha"}})
@@ -41,10 +45,6 @@
 (defn render-particles [game-state fixed-alpha]
   (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
   (let [[program _] (get-program identity-program *program-cache*)
-        texture-binding (get-uniform-location program :texture-unit)
-        transform-binding (get-uniform-location program :mv-matrix)
-        alpha-binding (get-uniform-location program :alpha)
-        matrix-buffer (create-float-buffer 16)
         time (/ (game-state :time) 1000.0)
         rotation-factor (* time 0.5)
         scale-factor (+ 0.75 (* 0.25 (Math/sin (* time 0.25))))
@@ -52,18 +52,37 @@
                              (translation (Math/cos rotation-factor)
                                           (Math/sin rotation-factor) 0.0))]
     (use-program program)
-    (GL20/glUniform1i texture-binding 0)
-    (gl-bind-buffer (*unit-quad* :verts) 3 (get-attribute-location program :vertices))
-    (gl-bind-buffer (*unit-quad* :texcoords) 2 (get-attribute-location program :texture-coords))
+    (bind-program-attribute program :vertices (*unit-quad* :verts))
+    (bind-program-attribute program :texture-coords (*unit-quad* :texcoords))
+    (bind-program-uniform program :texture-unit 0)
 
     (doseq [particle (game-state :fires)]
       (let [rot (rotation (deg-to-rad (particle :rotation)) 0.0 0.0 1.0)
             sf (particle :scale)
             sc (scale sf sf sf)
             tf (mul world-transform rot sc (translation 1.0 0.0 0.0))]
-        (GL20/glUniformMatrix4 transform-binding false (matrix-to-buffer tf matrix-buffer))
-        (GL20/glUniform1f alpha-binding (if fixed-alpha fixed-alpha (exp-alpha particle)))
+
+        (bind-program-uniform program :mv-matrix tf)
+        (bind-program-uniform program :alpha (if fixed-alpha fixed-alpha (exp-alpha particle)))
+
         (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4)))))
+
+(defn cycle2 [dtms game-state]
+  (let [[program _] (get-program identity-program *program-cache*)]
+    (bind-texture (:texture-id *test-float-texture*))
+    (use-program program)
+    (bind-program-attribute program :vertices (*unit-quad* :verts))
+    (bind-program-attribute program :texture-coords (*unit-quad* :texcoords))
+    (bind-program-uniform program :texture-unit 0)
+  
+    (let [mat (eye)]
+      (bind-program-uniform program :mv-matrix mat)
+      (bind-program-uniform program :alpha 1.0)
+      (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))
+
+    (Display/update)
+    (Display/sync 30)
+    (conj game-state {:time (+ (game-state :time) dtms)})))
 
 (defn game-cycle [dtms game-state]
 
@@ -88,7 +107,6 @@
   ;; and draw the particles again using that render result
   (render-particles game-state false)
 
-  
   (Display/update)
   (Display/sync 30)
 
@@ -106,7 +124,7 @@
   (loop [last-time (System/currentTimeMillis)
          game-state (game-state-init)]
     (let [current-time (System/currentTimeMillis)
-          next-game-state (#'game-cycle (- current-time last-time) game-state)]
+          next-game-state (#'cycle2 (- current-time last-time) game-state)]
       (if-not (should-exit)
         (recur current-time next-game-state)))))
 
@@ -126,6 +144,16 @@
                         (== (.getHeight m) height)))
                  (Display/getAvailableDisplayModes))))
 
+(defn simplex-texture [width height]
+  (let [w-over-two (/ width 2)
+        h-over-two (/ height 2)
+        two-over-w (/ 2.0 width)
+        two-over-h (/ 2.0 height)]
+    (for [y (range (- h-over-two) h-over-two)]
+      (for [x (range (- w-over-two) w-over-two)]
+        (let [value (simplex-noise (* two-over-w x) (* two-over-h y) 0.35)]
+          [value value value 1.0])))))
+
 (defn run []
   (Display/setTitle "Hello World")
   (Display/setDisplayMode (find-mode 1024 768))
@@ -139,7 +167,10 @@
               *program-cache* (preload-programs nil identity-program)
               *unit-quad* (create-unit-quad)
               *screen-pbo* (gl-buffer)
-              *screen-texture* (create-texture-id)]
+              *screen-texture* (create-texture-id)
+              *matrix-buffer* (create-float-buffer 16)
+              *test-float-texture* (float-arrays-to-texture (simplex-texture 100 100))]
+      
       ;; allocate space for the screen pbo
       (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
       (GL15/glBufferData GL21/GL_PIXEL_PACK_BUFFER (* *width* *height* 4) GL15/GL_DYNAMIC_COPY)

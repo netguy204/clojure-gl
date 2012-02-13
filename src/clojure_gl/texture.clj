@@ -4,7 +4,7 @@
            (java.awt.color ColorSpace)
            (java.awt.image ColorModel ComponentColorModel DataBuffer Raster BufferedImage)
            (javax.imageio ImageIO)
-           (org.lwjgl.opengl GL11)
+           (org.lwjgl.opengl GL11 GL30)
            (java.io BufferedInputStream)
            (java.nio ByteBuffer ByteOrder IntBuffer)
            (java.util Hashtable)))
@@ -76,6 +76,43 @@
                          GL11/GL_UNSIGNED_BYTE
                          bytes)
       texid)))
+
+(defn float-arrays-to-buffer [float-array]
+  (let [height (count float-array)
+        width (count (first float-array))
+        depth (count (first (first float-array)))
+        num-floats (* height width depth)
+        buffer (create-float-buffer num-floats)]
+    (doseq [row float-array
+            cell row
+            item cell]
+      (.put buffer (float item)))
+    (.flip buffer)
+    
+    {:width width
+     :height height
+     :depth depth
+     :buffer buffer}))
+
+(defn float-arrays-to-texture [float-array]
+  (let [{width :width height :height
+         depth :depth buffer :buffer} (float-arrays-to-buffer float-array)
+        texid (create-texture-id)]
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D texid)
+    (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_NEAREST)
+    (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_NEAREST)
+    (GL11/glTexImage2D GL11/GL_TEXTURE_2D
+                       0
+                       GL30/GL_RGB16F
+                       width height
+                       0
+                       GL11/GL_RGBA
+                       GL11/GL_FLOAT
+                       buffer)
+    {:width width
+     :height height
+     :depth depth
+     :texture-id texid}))
 
 (defn get-texture [resource texture-cache]
   (let [texture-cache (or texture-cache {})]

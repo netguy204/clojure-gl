@@ -1,9 +1,13 @@
 (ns clojure-gl.math
-  (:use (clojure-gl buffers))
-  (:import (org.lwjgl.util.vector Matrix4f Vector3f)))
+  (:use (clojure-gl buffers shader-variables))
+  (:import (org.lwjgl.util.vector Matrix4f Vector3f)
+           (org.lwjgl.opengl GL20)))
 
 (defn deg-to-rad [deg]
   (* Math/PI (/ deg 180.0)))
+
+(defn eye []
+  (Matrix4f.))
 
 (defn rotation [theta rx ry rz]
   (.rotate (Matrix4f.) theta (Vector3f. rx ry rz)))
@@ -29,3 +33,22 @@
     (.store mat fb)
     (.flip fb)
     fb))
+
+(def ^:dynamic *matrix-buffer* nil)
+
+(extend Matrix4f
+  ActsLikeUniform
+  {:uniform-bind (fn [value location]
+                   (if *matrix-buffer*
+                     (GL20/glUniformMatrix4 location false (matrix-to-buffer value *matrix-buffer*))
+                     (GL20/glUniformMatrix4 location false (matrix-to-buffer value))))})
+
+(extend Double
+  ActsLikeUniform
+  {:uniform-bind (fn [value location]
+                   (GL20/glUniform1f location value))})
+
+(extend Long
+  ActsLikeUniform
+  {:uniform-bind (fn [value location]
+                   (GL20/glUniform1i location value))})
