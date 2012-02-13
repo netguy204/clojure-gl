@@ -2,6 +2,9 @@
 
 
 ;; first an implementation of simplex noise (eg perlin noise)
+;; based on the java reference implementation found at:
+;; http://mrl.nyu.edu/~perlin/noise/
+
 (def permutations
   [151 160 137 91 90 15 
    131 13 201 95 96 53 194 233 7 225 140 36 103 30 69 142 8 99 37 240 21 10 23 
@@ -86,6 +89,8 @@
 
 
 ;; now the marching cubes algorithm
+;; This is based on the C implementation found at:
+;; http://paulbourke.net/geometry/polygonise/
 
 (def edge-table
   [0x0    0x109  0x203  0x30a  0x406  0x50f  0x605  0x70c 
