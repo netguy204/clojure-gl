@@ -16,6 +16,7 @@
 (def ^:dynamic *texture-cache* nil)
 (def ^:dynamic *program-cache* nil)
 (def ^:dynamic *unit-quad* nil)
+(def ^:dynamic *simplex-surface* nil)
 (def ^:dynamic *screen-pbo* nil)
 (def ^:dynamic *screen-texture* nil)
 (def ^:dynamic *test-float-texture* nil)
@@ -35,6 +36,14 @@
    :uniforms {:texture-unit "textureUnit0"
               :mv-matrix "mvMatrix"
               :alpha "alpha"}})
+
+(def no-texture-program
+  {:name "no-texture-program"
+   :shaders {:vertex "clojure-gl/no-texture.vs"
+             :fragment "clojure-gl/no-texture.fs"}
+   :attributes {:vertices {:name "vVertex"
+                           :arity 3}}
+   :uniforms {:mv-matrix "mvMatrix"}})
 
 (def num-particles 350)
 
@@ -68,17 +77,19 @@
         (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4)))))
 
 (defn cycle2 [dtms game-state]
-  (let [[program _] (get-program identity-program *program-cache*)]
-    (bind-texture (:texture-id *test-float-texture*))
+  (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
+  (let [[program _] (get-program no-texture-program *program-cache*)]
     (use-program program)
-    (bind-program-attribute program :vertices (*unit-quad* :verts))
-    (bind-program-attribute program :texture-coords (*unit-quad* :texcoords))
-    (bind-program-uniform program :texture-unit 0)
+    (bind-program-attribute program :vertices (*simplex-surface* :buffer))
   
-    (let [mat (eye)]
+    (let [time (/ (game-state :time) 1000.0)
+          rotation-factor1 (* time 0.5)
+          rotation-factor2 (* time 0.25)
+          mat (mul (scale 0.5 0.5 0.5)
+                   (rotation rotation-factor1 0.0 1.0 0.0)
+                   (rotation rotation-factor2 0.0 0.0 1.0))]
       (bind-program-uniform program :mv-matrix mat)
-      (bind-program-uniform program :alpha 1.0)
-      (GL11/glDrawArrays GL11/GL_TRIANGLE_FAN 0 4))
+      (GL11/glDrawArrays GL11/GL_TRIANGLES 0 (*simplex-surface* :vertex-count)))
 
     (Display/update)
     (Display/sync 30)
@@ -134,7 +145,6 @@
   (GL11/glOrtho 0 *aspect-ratio* 0 1 1 -1)
   (GL11/glMatrixMode GL11/GL_MODELVIEW)
   (GL11/glEnable GL11/GL_TEXTURE_2D)
-  (GL11/glDisable GL11/GL_DEPTH_TEST)
   (GL11/glBlendFunc GL11/GL_SRC_ALPHA GL11/GL_ONE_MINUS_SRC_ALPHA)
   (GL11/glEnable GL11/GL_BLEND))
 
@@ -164,12 +174,13 @@
               *height* (Display/getHeight)
               *aspect-ratio* (/ (Display/getWidth) (Display/getHeight))
               *texture-cache* (preload-textures nil guy-texture fire-texture star-texture)
-              *program-cache* (preload-programs nil identity-program)
-              *unit-quad* (create-unit-quad)
+              *program-cache* (preload-programs nil identity-program no-texture-program)
               *screen-pbo* (gl-buffer)
               *screen-texture* (create-texture-id)
               *matrix-buffer* (create-float-buffer 16)
-              *test-float-texture* (float-arrays-to-texture (simplex-texture 100 100))]
+              *simplex-surface* (let [surface (simplex-surface 0.3 30 30 30)]
+                                  {:buffer (gl-point-buffer 3 surface)
+                                   :vertex-count (count surface)})]
       
       ;; allocate space for the screen pbo
       (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
