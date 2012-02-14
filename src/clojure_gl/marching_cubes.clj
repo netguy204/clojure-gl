@@ -451,18 +451,18 @@
      (tri-table index))))
 
 (defn simplex-surface [isolevel xdim ydim zdim]
-  (let [xstep (/ 2.0 xdim)
-        ystep (/ 2.0 ydim)
-        zstep (/ 2.0 zdim)
+  (let [xstep (/ 4.0 xdim)
+        ystep (/ 4.0 ydim)
+        zstep (/ 4.0 zdim)
         scale-vert (fn [v o]
                      (let [v (map * v [xstep ystep zstep]) ; scale
                            v (map + v o)]                  ; offset
                        (into [] v)))]
     (reduce
      (fn [result [xidx yidx zidx]]
-       (let [offset [(- (* xidx xstep) 1)
-                     (- (* yidx ystep) 1)
-                     (- (* zidx zstep) 1)]
+       (let [offset [(- (* xidx xstep) 2)
+                     (- (* yidx ystep) 2)
+                     (- (* zidx zstep) 2)]
              grid (into [] (map (fn [v]
                                   (let [v (scale-vert v offset)]
                                     (simplex-noise (v 0) (v 1) (v 2))))

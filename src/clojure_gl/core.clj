@@ -42,7 +42,9 @@
    :shaders {:vertex "clojure-gl/no-texture.vs"
              :fragment "clojure-gl/no-texture.fs"}
    :attributes {:vertices {:name "vVertex"
-                           :arity 3}}
+                           :arity 3}
+                :normals {:name "normal"
+                          :arity 3}}
    :uniforms {:mv-matrix "mvMatrix"}})
 
 (def num-particles 350)
@@ -81,11 +83,12 @@
   (let [[program _] (get-program no-texture-program *program-cache*)]
     (use-program program)
     (bind-program-attribute program :vertices (*simplex-surface* :buffer))
+    (bind-program-attribute program :normals (*simplex-surface* :normals))
   
     (let [time (/ (game-state :time) 1000.0)
           rotation-factor1 (* time 0.5)
           rotation-factor2 (* time 0.25)
-          mat (mul (scale 0.5 0.5 0.5)
+          mat (mul (scale 0.25 0.25 0.25)
                    (rotation rotation-factor1 0.0 1.0 0.0)
                    (rotation rotation-factor2 0.0 0.0 1.0))]
       (bind-program-uniform program :mv-matrix mat)
@@ -140,10 +143,8 @@
         (recur current-time next-game-state)))))
 
 (defn init-gl []
-  (GL11/glMatrixMode GL11/GL_PROJECTION)
-  (GL11/glLoadIdentity)
-  (GL11/glOrtho 0 *aspect-ratio* 0 1 1 -1)
-  (GL11/glMatrixMode GL11/GL_MODELVIEW)
+  (GL11/glViewport 0 0 *width* *height*)
+
   (GL11/glEnable GL11/GL_TEXTURE_2D)
   (GL11/glEnable GL11/GL_DEPTH_TEST)
   (GL11/glBlendFunc GL11/GL_SRC_ALPHA GL11/GL_ONE_MINUS_SRC_ALPHA)
@@ -179,9 +180,10 @@
               *screen-pbo* (gl-buffer)
               *screen-texture* (create-texture-id)
               *matrix-buffer* (create-float-buffer 16)
-              *simplex-surface* (let [surface (simplex-surface 0.05 30 30 30)]
+              *simplex-surface* (let [surface (simplex-surface 0.01 30 30 30)]
                                   {:buffer (gl-point-buffer 3 surface)
-                                   :vertex-count (count surface)})]
+                                   :vertex-count (count surface)
+                                   :normals (gl-point-buffer 3 (triple (triangles-to-normals surface)))})]
       
       ;; allocate space for the screen pbo
       (GL15/glBindBuffer GL21/GL_PIXEL_PACK_BUFFER *screen-pbo*)
