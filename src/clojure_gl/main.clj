@@ -1,4 +1,4 @@
-;(set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (ns clojure-gl.main
   (:use (clojure-gl core))

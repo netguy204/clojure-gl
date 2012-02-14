@@ -180,7 +180,7 @@
               *screen-pbo* (gl-buffer)
               *screen-texture* (create-texture-id)
               *matrix-buffer* (create-float-buffer 16)
-              *simplex-surface* (let [surface (simplex-surface 0.01 30 30 30)]
+              *simplex-surface* (let [surface (simplex-surface 0.01 60 60 60)]
                                   {:buffer (gl-point-buffer 3 surface)
                                    :vertex-count (count surface)
                                    :normals (gl-point-buffer 3 (triple (triangles-to-normals surface)))})]

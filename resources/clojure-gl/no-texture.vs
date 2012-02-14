@@ -8,5 +8,5 @@ varying vec4 vertNormal;
 void main(void) {
  gl_Position = mvMatrix * vVertex;
  color = vVertex;
- vertNormal = normal;
+ vertNormal = mvMatrix * normal;
 }

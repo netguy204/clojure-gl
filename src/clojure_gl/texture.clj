@@ -6,7 +6,7 @@
            (javax.imageio ImageIO)
            (org.lwjgl.opengl GL11 GL30)
            (java.io BufferedInputStream)
-           (java.nio ByteBuffer ByteOrder IntBuffer)
+           (java.nio ByteBuffer ByteOrder IntBuffer FloatBuffer)
            (java.util Hashtable)))
 
 
@@ -82,7 +82,7 @@
         width (count (first float-array))
         depth (count (first (first float-array)))
         num-floats (* height width depth)
-        buffer (create-float-buffer num-floats)]
+        ^FloatBuffer buffer (create-float-buffer num-floats)]
     (doseq [row float-array
             cell row
             item cell]
