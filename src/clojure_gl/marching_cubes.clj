@@ -37,6 +37,9 @@
   (* t t t (+ (* t (- (* t 6) 15))
               10)))
 
+(defn dfade [t]
+  (* 30 t t (+ (* t (- t 2.0)) 1)))
+
 (defn lerp [t a b]
   (+ a (* t (- b a))))
 
@@ -68,23 +71,40 @@
         AB (+ (permutations (+ A 1)) Z)
         B (+ (permutations (+ X 1)) Y)
         BA (+ (permutations B) Z)
-        BB (+ (permutations (+ B 1)) Z)]
-    
-    (lerp w
-          (lerp v
-                (lerp u
-                      (grad (permutations AA) x y z)
-                      (grad (permutations BA) (- x 1) y z))
-                (lerp u
-                      (grad (permutations AB) x (- y 1) z)
-                      (grad (permutations BB) (- x 1) (- y 1) z)))
-          (lerp v
-                (lerp u
-                      (grad (permutations (+ AA 1)) x y (- z 1))
-                      (grad (permutations (+ BA 1)) (- x 1) y (- z 1)))
-                (lerp u
-                      (grad (permutations (+ AB 1)) x (- y 1) (- z 1))
-                      (grad (permutations (+ BB 1)) (- x 1) (- y 1) (- z 1)))))))
+        BB (+ (permutations (+ B 1)) Z)
+        
+        a (grad (permutations AA) x y z)
+        b (grad (permutations BA) (- x 1) y z)
+        c (grad (permutations AB) x (- y 1) z)
+        d (grad (permutations BB) (- x 1) (- y 1) z)
+        e (grad (permutations (+ AA 1)) x y (- z 1))
+        f (grad (permutations (+ BA 1)) (- x 1) y (- z 1))
+        g (grad (permutations (+ AB 1)) x (- y 1) (- z 1))
+        h (grad (permutations (+ BB 1)) (- x 1) (- y 1) (- z 1))
+
+        k0 a
+        k1 (- b a)
+        k2 (- c a)
+        k3 (- e a)
+        k4 (- (+ a d) b c)
+        k5 (- (+ a g) c e)
+        k6 (- (+ a f) b e)
+        k7 (- (+ b c e h) a d f g)
+
+        noise (+ k0
+                 (* u k1) (* v k2) (* w k3) (* u v k4) (* v w k5)
+                 (* w u k6) (* u v w k7))
+
+        ;; computing the derivative
+        du (dfade x)
+        dv (dfade y)
+        dw (dfade z)
+
+        dndx (* du (+ k1 (* v k4) (* w k6) (* v w k7)))
+        dndy (* dv (+ k2 (* w k5) (* u k4) (* w u k7)))
+        dndz (* dw (+ k3 (* u k6) (* v k5) (* u v k7)))]
+
+    [noise dndx dndy dndz]))
 
 
 
@@ -414,6 +434,13 @@
      []
      (tri-table index))))
 
+(defn- normalize [x y z]
+  (let [mag (Math/sqrt (+ (* x x) (* y y) (* z z)))]
+    [(/ x mag) (/ y mag) (/ z mag)]))
+
+(defn- third [seq]
+  (nth seq 2))
+
 (defn simplex-surface [isolevel xdim ydim zdim]
   (let [xstep (/ 4.0 xdim)
         ystep (/ 4.0 ydim)
@@ -428,15 +455,28 @@
                      (- (* yidx ystep) 2)
                      (- (* zidx zstep) 2)]
              grid (into [] (map (fn [v]
-                                  (let [v (scale-vert v offset)]
-                                    (simplex-noise (v 0) (v 1) (v 2))))
+                                  (let [v (scale-vert v offset)
+                                        [n _ _ _] (simplex-noise (v 0) (v 1) (v 2))]
+                                    n))
                                 grid-vertices))
-             tris (map #(scale-vert % offset) (polygonise grid isolevel))]
 
+             base-tris (polygonise grid isolevel)
+             tris (map #(scale-vert % offset) base-tris)
+             norms (map (fn [v]
+                          (let [[_ nx ny nz] (simplex-noise (first v) (second v) (third v))]
+                            (normalize nx ny nz)))
+                        tris)]
+         
          (if (empty? tris)
            result
-           (apply conj result tris))))
-     []
+           {:tris (apply conj (:tris result) tris)
+            :norms (apply conj (:norms result) norms)})))
+
+     ;; base case for our reduce
+     {:tris []
+      :norms []}
+
+     ;; generate the integer grid indices
      (for [xidx (range xdim)
            yidx (range ydim)
            zidx (range zdim)]
