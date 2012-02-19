@@ -428,11 +428,12 @@
 
 (defn polygonise [grid isolevel]
   (let [index (cube-index grid isolevel)]
-    (reduce
-     (fn [result vert-index]
-       (conj result (vertex-position vert-index grid isolevel)))
-     []
-     (tri-table index))))
+    (persistent!
+     (reduce
+      (fn [result vert-index]
+        (conj! result (vertex-position vert-index grid isolevel)))
+      (transient [])
+      (tri-table index)))))
 
 (defn- normalize [x y z]
   (let [mag (Math/sqrt (+ (* x x) (* y y) (* z z)))]
@@ -441,43 +442,59 @@
 (defn- third [seq]
   (nth seq 2))
 
+(defn- conj-all! [seq more]
+  (reduce
+   (fn [seq more]
+     (conj! seq more))
+   seq
+   more))
+
 (defn simplex-surface [isolevel xdim ydim zdim]
-  (let [xstep (/ 4.0 xdim)
-        ystep (/ 4.0 ydim)
-        zstep (/ 4.0 zdim)
+  (let [xstep (/ 2.0 xdim)
+        ystep (/ 2.0 ydim)
+        zstep (/ 2.0 zdim)
         scale-vert (fn [v o]
                      (let [v (map * v [xstep ystep zstep]) ; scale
                            v (map + v o)]                  ; offset
-                       (into [] v)))]
-    (reduce
-     (fn [result [xidx yidx zidx]]
-       (let [offset [(- (* xidx xstep) 2)
-                     (- (* yidx ystep) 2)
-                     (- (* zidx zstep) 2)]
-             grid (into [] (map (fn [v]
-                                  (let [v (scale-vert v offset)
-                                        [n _ _ _] (simplex-noise (v 0) (v 1) (v 2))]
-                                    n))
-                                grid-vertices))
+                       (into [] v)))
 
-             base-tris (polygonise grid isolevel)
-             tris (map #(scale-vert % offset) base-tris)
-             norms (map (fn [v]
-                          (let [[_ nx ny nz] (simplex-noise (first v) (second v) (third v))]
-                            (normalize nx ny nz)))
-                        tris)]
-         
-         (if (empty? tris)
-           result
-           {:tris (apply conj (:tris result) tris)
-            :norms (apply conj (:norms result) norms)})))
+        ;; generate the integer grid indices
+        grid-indices (for [xidx (range xdim)
+                           yidx (range ydim)
+                           zidx (range zdim)]
+                       [xidx yidx zidx])
 
-     ;; base case for our reduce
-     {:tris []
-      :norms []}
+        ;; build the surface over a grid with that many indices but
+        ;; covering dims -1, 1
+        surface (reduce
+                 (fn [result [xidx yidx zidx]]
+                   (let [offset [(- (* xidx xstep) 1)
+                                 (- (* yidx ystep) 1)
+                                 (- (* zidx zstep) 1)]
+                         grid (into [] (map (fn [v]
+                                              (let [v (scale-vert v offset)
+                                                    [n _ _ _] (simplex-noise (v 0) (v 1) (v 2))]
+                                                n))
+                                            grid-vertices))
+                         
+                         base-tris (polygonise grid isolevel)
+                         tris (map #(scale-vert % offset) base-tris)
+                         norms (map (fn [v]
+                                      (let [[_ nx ny nz] (simplex-noise (first v) (second v) (third v))]
+                                        (normalize nx ny nz)))
+                                    tris)]
+                     
+                     (if (empty? tris)
+                       result
+                       {:tris (conj-all! (:tris result) tris)
+                        :norms (conj-all! (:norms result) norms)})))
 
-     ;; generate the integer grid indices
-     (for [xidx (range xdim)
-           yidx (range ydim)
-           zidx (range zdim)]
-       [xidx yidx zidx]))))
+                 ;; base case for our reduce
+                 {:tris (transient [])
+                  :norms (transient [])}
+                 
+                 grid-indices)]
+
+    ;; convert the result into a persistent datastructure
+    {:tris (persistent! (:tris surface))
+     :norms (persistent! (:norms surface))}))

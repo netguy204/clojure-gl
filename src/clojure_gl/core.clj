@@ -88,7 +88,7 @@
     (let [time (/ (game-state :time) 1000.0)
           rotation-factor1 (* time 0.5)
           rotation-factor2 (* time 0.25)
-          mat (mul (scale 0.25 0.25 0.25)
+          mat (mul (scale 0.5 0.5 0.5)
                    (rotation rotation-factor1 0.0 1.0 0.0)
                    (rotation rotation-factor2 0.0 0.0 1.0))]
       (bind-program-uniform program :mv-matrix mat)
